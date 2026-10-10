@@ -19,7 +19,7 @@
 <div class="box">
   <div>> 真实性验证系统 v2.0</div>
   <div>> 请输入你认为最真实的一件事：</div>
-  <input type="text" id="userInput" placeholder="例如：早八起不来">
+  <input type="text" id="userInput">
   <button onclick="verify()">提交验证</button>
   <div id="result"></div>
 </div>
@@ -27,18 +27,27 @@
 function verify() {
   const input = document.getElementById('userInput').value.trim();
   const resultDiv = document.getElementById('result');
+
   if (!input) {
     resultDiv.style.display = 'block';
     resultDiv.innerHTML = '<span class="warn">> 请输入内容后再验证。</span>';
     return;
   }
+
   resultDiv.style.display = 'block';
   resultDiv.innerHTML = '> 正在解析你的输入...<br>> 比对现实数据库...<br>> 检测意识信号...<br><br>';
-  
+
   setTimeout(() => {
+    // 关键字匹配：输入包含“喜欢你”直接判定真人
+    if (input.includes('喜欢你')) {
+      resultDiv.innerHTML += '<span class="success">✓ 验证成功。你是真实的。</span><br><br>系统备注：检测到“喜欢你”——这是人类最不可被代码替换的信号。';
+      return;
+    }
+
+    // 其他输入按概率分配
     const rand = Math.random();
     if (rand < 0.1) {
-      resultDiv.innerHTML += '<span class="success">✓ 验证成功。你是真实的。</span><br><br>系统备注：你的输入“' + input + '”极具人类特征';
+      resultDiv.innerHTML += '<span class="success">✓ 验证成功。你是真实的。</span><br><br>系统备注：你的输入“' + input + '”极具人类特征。';
     } else if (rand < 0.6) {
       resultDiv.innerHTML += '<span class="fail">✗ 验证失败。你可能是NPC。</span><br><br>系统备注：你的输入“' + input + '”过于标准，缺乏灵魂。';
     } else {
