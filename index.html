@@ -3,197 +3,49 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>真实性验证系统</title>
+<title>真实性验证系统 v2.0</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    background: #0a0a0a;
-    color: #33ff33;
-    font-family: "Courier New", Consolas, monospace;
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    overflow: hidden;
-  }
-
-  /* 扫描线效果 */
-  body::after {
-    content: "";
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      rgba(0, 0, 0, 0.15),
-      rgba(0, 0, 0, 0.15) 1px,
-      transparent 1px,
-      transparent 3px
-    );
-    pointer-events: none;
-    z-index: 10;
-  }
-
-  .terminal {
-    width: 100%;
-    max-width: 520px;
-    border: 1px solid #33ff33;
-    border-radius: 8px;
-    padding: 28px 24px;
-    box-shadow: 0 0 24px rgba(51, 255, 51, 0.25),
-                inset 0 0 40px rgba(51, 255, 51, 0.05);
-    position: relative;
-    z-index: 1;
-  }
-
-  .title {
-    font-size: 13px;
-    letter-spacing: 2px;
-    opacity: 0.6;
-    margin-bottom: 22px;
-    border-bottom: 1px dashed rgba(51, 255, 51, 0.3);
-    padding-bottom: 12px;
-  }
-
-  #output {
-    font-size: 15px;
-    line-height: 1.9;
-    min-height: 220px;
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
-
-  .cursor {
-    display: inline-block;
-    width: 9px;
-    height: 17px;
-    background: #33ff33;
-    vertical-align: -3px;
-    animation: blink 0.9s steps(1) infinite;
-  }
-
-  @keyframes blink {
-    0%, 50% { opacity: 1; }
-    51%, 100% { opacity: 0; }
-  }
-
+  body { background: #0a0a0a; color: #33ff33; font-family: "Courier New", monospace; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+  .box { border: 1px solid #33ff33; padding: 20px; width: 100%; max-width: 400px; box-shadow: 0 0 15px rgba(51,255,51,0.2); }
+  input { background: transparent; border: 1px solid #33ff33; color: #33ff33; padding: 8px; width: 100%; margin: 15px 0; font-family: inherit; outline: none; }
+  button { background: #33ff33; color: #0a0a0a; border: none; padding: 10px; width: 100%; font-weight: bold; cursor: pointer; font-family: inherit; }
+  #result { margin-top: 20px; line-height: 1.6; display: none; }
   .fail { color: #ff3b3b; }
   .warn { color: #ffcc00; }
-  .dim  { opacity: 0.55; }
-
-  .restart {
-    margin-top: 24px;
-    display: none;
-    background: transparent;
-    border: 1px solid #33ff33;
-    color: #33ff33;
-    font-family: inherit;
-    font-size: 13px;
-    padding: 8px 18px;
-    cursor: pointer;
-    letter-spacing: 1px;
-    transition: all 0.2s;
-  }
-
-  .restart:hover {
-    background: #33ff33;
-    color: #0a0a0a;
-  }
+  .success { color: #33ff33; }
 </style>
 </head>
 <body>
-
-<div class="terminal">
-  <div class="title">REALITY VERIFICATION SYSTEM v2.0.26</div>
-  <div id="output"></div>
-  <button class="restart" id="restart">重新验证</button>
+<div class="box">
+  <div>> 真实性验证系统 v2.0</div>
+  <div>> 请输入你认为最真实的一件事：</div>
+  <input type="text" id="userInput" placeholder="例如：早八起不来">
+  <button onclick="verify()">提交验证</button>
+  <div id="result"></div>
 </div>
-
 <script>
-const output = document.getElementById('output');
-const restartBtn = document.getElementById('restart');
-
-const lines = [
-  { text: '> 正在初始化真实性验证协议...', delay: 500 },
-  { text: '> 检测用户意识信号............ <span class="dim">OK</span>', delay: 700 },
-  { text: '> 比对现实世界数据库.......... <span class="dim">OK</span>', delay: 700 },
-  { text: '> 校验感官输入来源............ <span class="warn">异常</span>', delay: 700 },
-  { text: '> 追溯记忆链路完整性.......... <span class="warn">异常</span>', delay: 700 },
-  { text: '> 分析行为模式随机性.......... <span class="warn">过低</span>', delay: 700 },
-  { text: '', delay: 400 },
-  { text: '> 综合判定中...', delay: 900 },
-  { text: '', delay: 300 },
-  { text: '<span class="fail">✗ 验证失败</span>', delay: 800 },
-  { text: '', delay: 300 },
-  { text: '<span class="fail">系统提示：你可能是 NPC。</span>', delay: 600 },
-  { text: '', delay: 400 },
-  { text: '<span class="dim">建议：继续听演讲，观察自己是否具有自主意识。</span>', delay: 500 },
-  { text: '<span class="dim">若仍怀疑，请课后与演讲人讨论。</span>', delay: 400 },
-];
-
-let i = 0;
-
-function typeLine(html, callback) {
-  const temp = document.createElement('div');
-  temp.innerHTML = html;
-  const plain = temp.textContent;
-  let j = 0;
-  const lineEl = document.createElement('div');
-
-  // 处理带标签的情况：逐字显示纯文本，最后替换为完整HTML
-  if (temp.children.length === 0) {
-    // 纯文本，逐字打
-    const span = document.createElement('span');
-    lineEl.appendChild(span);
-    output.appendChild(lineEl);
-    const timer = setInterval(() => {
-      span.textContent += plain[j];
-      j++;
-      if (j >= plain.length) {
-        clearInterval(timer);
-        callback && callback();
-      }
-    }, 28);
-  } else {
-    // 含标签，整体淡入
-    lineEl.innerHTML = html;
-    lineEl.style.opacity = 0;
-    output.appendChild(lineEl);
-    let op = 0;
-    const timer = setInterval(() => {
-      op += 0.1;
-      lineEl.style.opacity = op;
-      if (op >= 1) {
-        clearInterval(timer);
-        callback && callback();
-      }
-    }, 30);
+function verify() {
+  const input = document.getElementById('userInput').value.trim();
+  const resultDiv = document.getElementById('result');
+  if (!input) {
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '<span class="warn">> 请输入内容后再验证。</span>';
+    return;
   }
-}
-
-function run() {
-  output.innerHTML = '';
-  restartBtn.style.display = 'none';
-  i = 0;
-
-  function next() {
-    if (i >= lines.length) {
-      restartBtn.style.display = 'inline-block';
-      return;
+  resultDiv.style.display = 'block';
+  resultDiv.innerHTML = '> 正在解析你的输入...<br>> 比对现实数据库...<br>> 检测意识信号...<br><br>';
+  
+  setTimeout(() => {
+    const rand = Math.random();
+    if (rand < 0.1) {
+      resultDiv.innerHTML += '<span class="success">✓ 验证成功。你是真实的。</span><br><br>系统备注：你的输入“' + input + '”极具人类特征';
+    } else if (rand < 0.6) {
+      resultDiv.innerHTML += '<span class="fail">✗ 验证失败。你可能是NPC。</span><br><br>系统备注：你的输入“' + input + '”过于标准，缺乏灵魂。';
+    } else {
+      resultDiv.innerHTML += '<span class="warn">? 验证异常。你处于叠加态。</span><br><br>系统备注：你的输入“' + input + '”既真实又虚幻，建议课后继续思考。';
     }
-    const line = lines[i];
-    i++;
-    setTimeout(() => {
-      typeLine(line.text, next);
-    }, line.delay);
-  }
-
-  next();
+  }, 1500);
 }
-
-restartBtn.addEventListener('click', run);
-run();
 </script>
 </body>
 </html>
